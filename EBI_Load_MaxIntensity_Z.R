@@ -9,6 +9,7 @@
 #library("imager")
 library(tictoc)
 library("EBImage")
+library("MaxContrastProjection")
 library("FISHalyseR")
 
 
@@ -16,38 +17,77 @@ library("FISHalyseR")
 
 tic("Total")
 tic("Loading Image")
-## import 
+
+############
+## import ##
+############
+
 # img = readImage(f)
-imgloc.cy3 = "/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif"
-imgloc.dapi = "/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_6.tif"
+setwd("/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/")
+imgloc.cy3 = "w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif"
+imgloc.dapi = "w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_6.tif"
 
-img.cy3 = readImage("/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif")
+img.cy3 = readImage("w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif")
+display(normalize(img.cy3), method="browser") # Normalizing enables proper function of image processing tools.
+img.cy3<-normalize(img.cy3)
 
-display(normalize(img.cy3), method="browser")
 #img.cy3 <- tiff::readTIFF(imgloc.cy3, all = TRUE,native=FALSE) # Yields smaller ram usage
 #img.dapi <- tiff::readTIFF(imgloc.dapi, all = TRUE,native=FALSE) # Yields smaller ram usage
+
+##
+
+
 toc()
 
-tic("Plotting Image")
+#tic("Plotting Image")
 # Test plot
-image(img.cy3[[32]],col=gray((0:32)/32),axes=FALSE)
-image(img.dapi[[32]],col=gray((0:32)/32),axes=FALSE)
-toc()
+#image(img.cy3[[32]],col=gray((0:32)/32),axes=FALSE)
+#image(img.dapi[[32]],col=gray((0:32)/32),axes=FALSE)
+#toc()
 
-#Max Intensity
-#Simple Approach
+#################
+#### Z-Stack ####
+#################
+
+
+# Max Intensity
+# Simple Approach
 tic("Z-stack Simple")
 
 MaxZstack.cy3 <- apply(simplify2array(img.cy3) ,c(1,2),max)
 MaxZstack.dapi <- apply(simplify2array(img.dapi) ,c(1,2),max)
 
 
+max_contrast_large = contrastProjection(imageStack = img.cy3,w_x = 15, w_y = 15, smoothing = 15,brushShape = "box")
+max_contrast_small = contrastProjection(imageStack = img.cy3,w_x = 3, w_y = 3, smoothing = 2,brushShape = "box")
+max_intensity_proj = intensityProjection(imageStack = img.cy3, projType = "max")
+min_intensity_proj = intensityProjection(imageStack = img.cy3, projType = "min")
+mean_intensity_proj = intensityProjection(imageStack = img.cy3,projType = "mean")
+median_intensity_proj = intensityProjection(imageStack = img.cy3,projType = "median")
+sd_intensity_proj = intensityProjection(imageStack = img.cy3, projType = "sd")
+sum_intensity_proj = intensityProjection(imageStack = img.cy3, projType = "sum")
+sd_maxcontrast <-normalize(max_contrast_large+sd_intensity_proj)
+mean_maxcontrast <-normalize(max_contrast_large-median_intensity_proj)
 toc()
 
 
 tic("Plotting ZStack")
-image(MaxZstack.cy3,col=gray((0:32)/32),axes=FALSE)
-image(MaxZstack.dapi,col=gray((0:32)/32),axes=FALSE)
+image(normalize(MaxZstack.cy3),col=gray((0:32)/32),axes=FALSE) + title(main = "Simple-Max Intensity")
+image(MaxZstack.dapi,col=gray((0:32)/32),axes=FALSE) + title(main = "Simple-Max Intensity")
+
+image(normalize(max_contrast_large+max_contrast_small),col=gray((0:32)/32),axes=FALSE)  + title(main = "teste")
+image(normalize(max_contrast_large),col=gray((0:32)/32),axes=FALSE)  + title(main = "max_contrast_large")
+image(normalize(max_contrast_small),col=gray((0:32)/32),axes=FALSE)  + title(main = "max_contrast_small")
+image(normalize(max_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "max_intensity_proj")
+image(normalize(min_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "min_intensity_proj")
+image(normalize(mean_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "mean_intensity_proj")
+image(normalize(median_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "median_intensity_proj")
+image(normalize(sd_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "sd_intensity_proj")
+image(normalize(sum_intensity_proj),col=gray((0:32)/32),axes=FALSE)  + title(main = "sum_intensity_proj")
+
+image(normalize(sd_maxcontrast),col=gray((0:32)/32),axes=FALSE)  + title(main = "sd_maxcontrast")
+image(normalize(mean_maxcontrast),col=gray((0:32)/32),axes=FALSE)  + title(main = "mean_maxcontrast")
+
 toc()
 toc()
 
@@ -55,15 +95,16 @@ toc()
 
 ## Practicing Particle Detection
 # Max Entropy Threshold
-img<-MaxZstack.cy3
+img<-max_intensity_proj
 t = calculateMaxEntropy(img)
 img[img<t] <- 0
 img[img>=t] <- 1
 
 image(img,col=gray((0:32)/32),axes=FALSE)
+display(img)
 
 # Otsu Threshold
-img<-MaxZstack.cy3
+img<-maxIntNorm1
 t = calculateThreshold(img)
 img[img<t] <- 0
 img[img>=t] <- 1
