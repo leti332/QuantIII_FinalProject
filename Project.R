@@ -1,5 +1,7 @@
 # Merged Code and Methods from EBI_Load_MaxIntensity_Z & Particle\ Detect\ V2
-# 
+# Image is loaded. Then the image is cut apart from two masks: a nucleus mask and cytoplasm mask
+# Cytoplasm mask is made from the DAPI image
+# Nucleus mask is simply the inverse of the Cytoplasm mask (extracellular removed)
 
 library("EBImage")
 library(FISHalyseR)
