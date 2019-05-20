@@ -1,31 +1,17 @@
-setwd("~/Desktop/QSRBIII (G)/QSRBIII_project/Particle_Detection")
-getwd()
+# Draw's masks around the nucleus and cytoplasm
+# 
 
-# if (!requireNamespace("BiocManager"))
-#   install.packages("BiocManager")
-# BiocManager::install()
-
-# BiocManager::install("EBImage")
-# EBImage will be used for loading the image into an editable form in R.
 library("EBImage")
-
-# BiocManager::install("MaxContrastProjection")
-# MaxContrastProjection has functions that will help stack the tif file.
-library("MaxContrastProjection")
-
-
-# BiocManager::install("FISHalyseR")
-# Hopefully FISHalyseR will be able to do our particle detection.
 library(FISHalyseR)
-
-# install.packages("devtools")
-# devtools::install_github("federicomarini/flowcatchR")
-# library(flowcatchR)
 
 
 # input file names here
-fileCy = "w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_21 copy.tif"
-fileDapi = "w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_21 copy.tif"
+setwd("/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/")
+
+imgloc.cy3 = "w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif"
+imgloc.dapi = "w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_6.tif"
+x<-40
+y<-50
 
 ## Load a sample image from EBImage.
 # f = system.file("images", file, package="EBImage")
@@ -38,7 +24,8 @@ class(cyImg)
 frames = numberOfFrames(cyImg)
 
 # display(cyImg, method="raster", all=TRUE)
-cyImgTrunc <- cyImg[,,(frames/2 -7):(frames/2 +7)]
+#cyImgTrunc <- cyImg[,,(frames/2 -7):(frames/2 +7)]
+cyImgTrunc <- cyImg[,,x:y]
 display(normalize(cyImgTrunc), method = "raster", all=TRUE)
 hist(cyImgTrunc)
 
