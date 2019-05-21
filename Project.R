@@ -1,20 +1,44 @@
+#!/usr/bin/env Rscript
+#!/usr/bin/Rscript
+options(warn=-1)
+
 # Merged Code and Methods from EBI_Load_MaxIntensity_Z & Particle\ Detect\ V2
 # Image is loaded. Then the image is cut apart from two masks: a nucleus mask and cytoplasm mask
 # Cytoplasm mask is made from the DAPI image
 # Nucleus mask is simply the inverse of the Cytoplasm mask (extracellular removed)
-
-library("EBImage")
-library(FISHalyseR)
-library("MaxContrastProjection")
+#suppressMessages(library(base64))
+suppressMessages(library("EBImage"))
+suppressMessages(library(FISHalyseR))
+suppressMessages(library("MaxContrastProjection"))
 #library("spatialfil")
+suppressMessages(library("optparse"))
+
+# Command Line
+
+option_list = list(
+  make_option(c("-c", "--cy"), type="character", default=NULL, 
+              help="tiff cy3 file", metavar="character"),
+  make_option(c("-d", "--dapi"), type="character", default=NULL, 
+              help="tiff dapi file", metavar="character")
+); 
+
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
+
+if (is.null(opt$cy)){
+  print_help(opt_parser)
+  stop("Need corresponding Cy3 and DAPI TIFF files.", call.=FALSE)
+}
 
 
 
-# input file names here
-setwd("/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/")
-
-imgloc.cy3 = "w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif"
-imgloc.dapi = "w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_6.tif"
+# # input file names here
+# setwd("/home/daniel/Documents/Code/R/Einstein/QuantIII_FinalProject/data_simulation/cropped_img/")
+# 
+# imgloc.cy3 = "w1_HelaKyoto_Gapdh_2597_p01_cy3__Cell_CP_6.tif"
+# imgloc.dapi = "w1_HelaKyoto_Gapdh_2597_p01_dapi__Cell_CP_6.tif"
+imgloc.cy3 = opt$cy
+imgloc.dapi = opt$dapi
 x<-40
 y<-50
 
@@ -31,29 +55,35 @@ frames = numberOfFrames(cyImg)
 #cyImgTrunc <- cyImg[,,(frames/2 -7):(frames/2 +7)]
 cyImgTrunc <- cyImg[,,x:y]
 #display(normalize(cyImgTrunc), method = "raster", all=TRUE)
-hist(cyImgTrunc)
+#hist(cyImgTrunc)
 
 
 dapiImg = readImage(imgloc.dapi)
 frames2 = numberOfFrames(dapiImg)
 dapiImgTrunc <- dapiImg[,,(frames/2 -7):(frames/2 +7)]
 
-## Adaptive Threshold for nucleus ##
-###### USE THIS ONE!
+######### Adaptive Threshold for nucleus ##
+# USE THIS ONE!
 # The other methods give Image objects with storage mode Boolean
 # I guess I could have used the other methods.
 
-# This uses a linear filter "thresh"
-adapThresh2 <- thresh(normalize(dapiImgTrunc), w=15, h=15, offset=0.05)
-display(adapThresh2, method = "raster", all=TRUE )
-max_intensity_proj_thresh2 = intensityProjection(imageStack = adapThresh2, projType = "max")
-display(normalize(max_intensity_proj_thresh2))
+threshold2 = otsu(normalize(dapiImgTrunc))
+otsuThresh2 = combine( mapply(function(frame, th) frame > th,
+                              getFrames(normalize(dapiImgTrunc)),
+                              threshold2, SIMPLIFY=FALSE) )
+#display(otsuThresh2, method = "raster", all=TRUE)
 
-nucShadow <- fillHull(normalize(max_intensity_proj_thresh2))
+##########
 
-# Sanity check
-display(nucShadow)
-imageData(nucShadow)
+nmask2 = watershed( distmap(otsuThresh2), 3 )   # Creating a nucleus outline
+
+#display(colorLabels(nmask2), all=TRUE)
+
+nucShadow <- intensityProjection(imageStack = fillHull(nmask2),projType = "max")  # Filling in holes in the mask and stacking 15 masks)
+
+
+#display(nucShadow)
+
 
 
 ## Otsu Global Threshold for cytoplasm ##
@@ -62,13 +92,13 @@ threshold = otsu(normalize(cyImgTrunc))
 otsuThresh = combine( mapply(function(frame, th) frame > th,
                              getFrames(normalize(cyImgTrunc)),
                              threshold, SIMPLIFY=FALSE) )
-display(otsuThresh, method = "raster", all=TRUE)
+#display(otsuThresh, method = "raster", all=TRUE)
 ##########
 nmask = watershed( distmap(otsuThresh), 3 )     # Creating a cytoplasm outline
-display(bwlabel(nmask), all=TRUE)
+#display(bwlabel(nmask), all=TRUE)
 
 cytShadow <- fillHull(nmask)                    # Filling in holes in the cytoplasm
-display(cytShadow)
+#display(cytShadow)
 ##########################
 
 
@@ -87,7 +117,7 @@ CytoplasmImage<-cyImgFilter2
 #display(normalize(cyImgFilter2), method = "raster", all=TRUE)
 
 ##################################################
-## A cytoplasm outline has been made AHAHAHAHA  ##
+## A cytoplasm outline has been made   ##
 ##################################################
 
 ## Cytoplasm
@@ -104,9 +134,9 @@ img = (a)
 t = calculateThreshold(normalize(img))
 img[img<t] <- 0
 img[img>=t] <- 1
-display(img)
+#display(img)
 img_2<-analyseParticles(img, 20, 2,0) # Very simple "Clean up"
-display(img_2)
+#display(img_2)
 
 
 
@@ -122,10 +152,10 @@ img_N = (a_N)
 t_N = calculateThreshold(normalize(img_N))
 img_N[img_N<t] <- 0
 img_N[img_N>=t] <- 1
-display(img_N)
+#display(img_N)
 
 img_N_2<-analyseParticles(img_N, 20, 2,0) # Very simple "Clean up"
-display(img_N_2)
+#display(img_N_2)
 
 # Counting
 
@@ -134,4 +164,40 @@ img_2.counted <- bwlabel(img_2)
 
 Nucleus_puncta <- max(img_N_2.counted)
 Cyto_puncta <- max(img_2.counted)
+
+##### Area Calculations
+## Area counter of cytoplasm
+
+#i = 1
+#areaCountCyt = 0
+#for (i in 1:length(cytShadow)){
+#  if (cytShadow[i] == 1){
+#    areaCountCyt = areaCountCyt + 1
+#  }
+ # i+1
+  #print(areaCountCyt)
+  #print (i)
+#}
+
+## Area counter of nucleus. areaCountNuc outputs number of pixels comprising nucleus
+
+#i = 1
+#areaCountNuc = 0
+#for (i in 1:length(nucShadow)){
+#  if (nucShadow[i] == 1){
+#    areaCountNuc = areaCountNuc + 1
+#  }
+#  i+1
+#  print(areaCountNuc)
+#  print (i)
+#}
+
+#areaCountNuc
+
+
+# Output to Terminal
+
+
+output<- c(imgloc.cy3,Nucleus_puncta,Cyto_puncta,sum(nucShadow),sum(cytShadow))
+cat(paste(shQuote(output, type="cmd"), collapse=", "))
 
