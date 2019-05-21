@@ -199,5 +199,6 @@ Cyto_puncta <- max(img_2.counted)
 
 
 output<- c(imgloc.cy3,Nucleus_puncta,Cyto_puncta,sum(nucShadow),sum(cytShadow))
-cat(paste(shQuote(output, type="cmd"), collapse=", "))
+cat(paste(shQuote(output, type="cmd"), collapse=", "),"\n")
+#print("\n",quote=FALSE)
 
