@@ -150,8 +150,8 @@ min_intensity_proj_N = intensityProjection(imageStack = NucleusFilter, projType 
 a_N <- normalize(max_contrast_N^8 - min_intensity_proj_N^8)
 img_N = (a_N)
 t_N = calculateThreshold(normalize(img_N))
-img_N[img_N<t] <- 0
-img_N[img_N>=t] <- 1
+img_N[img_N<t_N] <- 0
+img_N[img_N>=t_N] <- 1
 #display(img_N)
 
 img_N_2<-analyseParticles(img_N, 20, 2,0) # Very simple "Clean up"
